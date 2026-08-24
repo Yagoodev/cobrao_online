@@ -1,0 +1,109 @@
+package main
+
+import (
+	"crypto/sha1"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"strings"
+)
+
+const websocketGUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+type HealthResponse struct {
+	Status string `json:"status"`
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	response := HealthResponse{Status: "ok"}
+
+	err := json.NewEncoder(w).Encode(response)
+
+	if err != nil {
+		fmt.Println("Error in health")
+	}
+}
+
+func websocketHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	upgrade := r.Header.Get("Upgrade")
+	connection := r.Header.Get("Connection")
+	secWebsocketVersion := r.Header.Get("Sec-Websocket-Version")
+	secWebsocketKey := r.Header.Get("Sec-WebSocket-Key")
+
+	if !strings.EqualFold(upgrade, "websocket") {
+		http.Error(w, "upgrade header must be websocket", http.StatusBadRequest)
+		return
+	}
+
+	if !strings.Contains(strings.ToLower(connection), "upgrade") {
+		http.Error(w, "connection header must include upgrade", http.StatusBadRequest)
+		return
+	}
+
+	if secWebsocketVersion != "13" {
+		w.Header().Set("Sec-Websocket-Version", "13")
+		http.Error(w, "unsupported websocket version", http.StatusUpgradeRequired)
+		return
+	}
+
+	if secWebsocketKey == "" {
+		http.Error(w, "missing Sec-WebSocket-Key", http.StatusBadRequest)
+		return
+	}
+
+	sum := sha1.Sum([]byte(secWebsocketKey + websocketGUID))
+	accept := base64.StdEncoding.EncodeToString(sum[:])
+
+	hj, ok := w.(http.Hijacker)
+
+	if !ok {
+		http.Error(w, "hijacking not supported", http.StatusInternalServerError)
+		return
+	}
+
+	conn, bufrw, err := hj.Hijack()
+
+	if err != nil {
+		log.Printf("hijack: %v", err)
+		return
+	}
+
+	message := "HTTP/1.1 101 Switching Protocols\r\n" +
+		"Upgrade: websocket\r\n" +
+		"Connection: Upgrade\r\n" +
+		"Sec-WebSocket-Accept: %s\r\n" +
+		"\r\n"
+
+	fmt.Fprintf(bufrw, message, accept)
+
+	if err := bufrw.Flush(); err != nil {
+		log.Printf("flush: %v", err)
+		return
+	}
+
+	defer conn.Close()
+}
+
+func main() {
+
+	server := http.NewServeMux()
+	server.Handle("/", http.FileServer(http.Dir("static")))
+	server.HandleFunc("/ws", websocketHandler)
+	server.HandleFunc("/health", healthHandler)
+
+	fmt.Printf("Server running on the port: %d\n", 8080)
+
+	err := http.ListenAndServe(":8080", server)
+
+	if err != nil {
+		log.Fatal("An error ocurring when try start the server:", err)
+	}
+}

@@ -1,0 +1,28 @@
+# Binário do projeto (mesmo nome da pasta, sem extensão)
+/cobrinha
+
+# Binários e artefatos de build
+*.exe
+*.dll
+*.so
+*.dylib
+/bin/
+/dist/
+
+# Testes, cobertura e profiling
+*.test
+*.out
+coverage.*
+*.prof
+*.pprof
+
+# Segredos e config local
+.env
+.env.*
+!.env.example
+
+# Editor / SO
+.vscode/
+.idea/
+*.swp
+.DS_Store
