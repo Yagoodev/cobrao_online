@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -28,6 +29,9 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func websocketHandler(w http.ResponseWriter, r *http.Request) {
+
+	log.Printf("WebSocket connection requested.\n")
+
 	if r.Method != http.MethodGet {
 		http.Error(w, "method Not Allowed", http.StatusMethodNotAllowed)
 		return
@@ -76,6 +80,8 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer conn.Close()
+
 	message := "HTTP/1.1 101 Switching Protocols\r\n" +
 		"Upgrade: websocket\r\n" +
 		"Connection: Upgrade\r\n" +
@@ -83,13 +89,20 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 		"\r\n"
 
 	fmt.Fprintf(bufrw, message, accept)
+	log.Printf("Connection upgraded to WebSocket.\n")
 
 	if err := bufrw.Flush(); err != nil {
 		log.Printf("flush: %v", err)
 		return
 	}
 
-	defer conn.Close()
+	header := make([]byte, 2)
+	if _, err = io.ReadFull(bufrw, header); err != nil {
+		log.Printf("read header: %v", err)
+		return
+	}
+
+	log.Printf("%08b", header)
 }
 
 func main() {
