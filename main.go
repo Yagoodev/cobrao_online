@@ -97,20 +97,56 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Connection upgraded to WebSocket.\n")
 
-	header := make([]byte, 2)
+	for {
+		header := make([]byte, 2)
 
-	if _, err := io.ReadFull(bufrw, header); err != nil {
-		log.Printf("read header: %v", err)
-		return
+		if _, err := io.ReadFull(bufrw, header); err != nil {
+			log.Printf("read header: %v", err)
+			return
+		}
+
+		fin := header[0]&0x80 != 0
+		opcode := header[0] & 0x0F
+		masked := header[1]&0x80 != 0
+		payloadLen := int(header[1] & 0x7F)
+
+		log.Printf("frame: fin=%v opcode=%#x masked=%v len=%d", fin, opcode, masked, payloadLen)
+
+		if masked == false {
+			log.Printf("client frame is not masked")
+			return
+		}
+
+		maskKey := make([]byte, 4)
+
+		if _, err := io.ReadFull(bufrw, maskKey); err != nil {
+			log.Printf("read mask key: %v", err)
+			return
+		}
+
+		payload := make([]byte, payloadLen)
+
+		if _, err := io.ReadFull(bufrw, payload); err != nil {
+			log.Printf("read payload: %v", err)
+			return
+		}
+
+		for i := range payloadLen {
+			payload[i] ^= maskKey[i%4]
+		}
+
+		response := append([]byte{0x81, byte(len(payload))}, payload...)
+
+		if _, err := bufrw.Write(response); err != nil {
+			log.Printf("write echo: %v", err)
+			return
+		}
+
+		if err := bufrw.Flush(); err != nil {
+			log.Printf("flush echo: %v", err)
+			return
+		}
 	}
-
-	fin := header[0]&0x80 != 0
-	opcode := header[0] & 0x0F
-	masked := header[1]&0x80 != 0
-	payloadLen := int(header[1] & 0x7F)
-
-	log.Printf("frame: fin=%v opcode=%#x masked=%v len=%d", fin, opcode, masked, payloadLen)
-	log.Printf("%08b", header)
 }
 
 func main() {
