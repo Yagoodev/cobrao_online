@@ -74,6 +74,20 @@ pergunta — confirmar direto quando ele acerta.
 
 Comunicação em português brasileiro informal.
 
+### 2.8 Formato de aprendizado preferido
+
+Explicar em blocos bem pequenos. Cada resposta deve conter uma única ideia ou uma
+microtarefa por vez, com textos curtos e linguagem simples. Só avançar para o próximo
+bloco depois que o Yago responder, testar ou pedir para continuar. Evitar antecipar
+teoria, alternativas e etapas futuras que não sejam necessárias para o bloco atual.
+Sempre que ajudar a explicar Go, traçar um paralelo explícito com TypeScript/Node.js,
+que é a linguagem de maior familiaridade do Yago.
+
+Sempre que uma microtarefa exigir implementação, mostrar também o trecho de código
+exato que deve ser adicionado ou alterado, junto de uma explicação curta do que ele
+representa. Ainda manter os blocos pequenos: apenas o código necessário para a etapa
+atual, nunca um arquivo inteiro adiantando os próximos passos.
+
 ---
 
 ## 3. Arquitetura — decisões já fechadas
@@ -148,8 +162,10 @@ Pacote único, só stdlib. Um `ServeMux` com três rotas:
    do `net/http`.
 7. Escreve o `101 Switching Protocols` à mão no `bufrw` e dá `Flush`.
 
-Resultado hoje: o navegador conecta sem erro no console. **Ler e escrever frames ainda
-não existe.**
+Resultado hoje: o navegador conecta, o servidor lê frames curtos de texto mascarados,
+desfaz a máscara e devolve o mesmo payload como echo. O handler fica em loop e atende
+vários frames da mesma conexão. Tamanhos estendidos, fragmentação e frames de controle
+ainda não existem.
 
 ### `static/js/game.js` — front-end
 
@@ -182,8 +198,8 @@ Cada etapa fecha um ciclo testável — de propósito, para caber numa live.
 |---|---|---|
 | 1 | Servidor HTTP servindo os estáticos | ✅ feito |
 | 2 | Handshake WebSocket na mão (browser conecta sem erro no console) | ✅ feito |
-| 3 | Framing: ler frame de texto e responder echo (`ws.send("oi")` → `"oi"`) | 🟡 **próxima** |
-| 4 | Ping/pong e close frame | ⬜ |
+| 3 | Framing: ler frame de texto e responder echo (`ws.send("oi")` → `"oi"`) | ✅ feito |
+| 4 | Ping/pong e close frame | 🟡 **próxima** |
 | 5 | Hub + registro/remoção de clientes | ⬜ |
 | 6 | Game loop com uma cobra só, movendo sozinha (no **servidor**) | ⬜ |
 | 7 | Input do teclado alterando a direção (via WS, servidor autoritativo) | ⬜ |
@@ -192,7 +208,7 @@ Cada etapa fecha um ciclo testável — de propósito, para caber numa live.
 
 ---
 
-## 6. Etapa atual — framing e echo
+## 6. Framing e echo — concluído
 
 Depois do `101` a conexão não fala mais HTTP. Tudo que trafega são frames do RFC 6455.
 
@@ -220,40 +236,39 @@ Opcodes: `0x1` texto · `0x8` close · `0x9` ping · `0xA` pong.
 Servidor → cliente **não** leva máscara. Para payload curto, o frame inteiro é
 `[]byte{0x81, byte(len(payload))}` seguido do payload.
 
+O handler lê e responde dentro de um `for { ... }`: depois de enviar um echo, volta a
+esperar o próximo frame na mesma conexão. Hoje ele suporta somente payloads com até 125
+bytes, pois ainda não lê nem escreve os tamanhos estendidos `126` e `127`.
+
 ### Como testar
 
 ```js
 const ws = new WebSocket("ws://localhost:8080/ws");
+ws.onopen = () => {
+  ws.send("primeira");
+  ws.send("segunda");
+};
 ws.onmessage = e => console.log("recebi:", e.data);
-ws.onclose   = e => console.log("fechou", e.code);
-ws.send("oi");
 ```
 
-Esperado: `recebido: oi` no log do servidor, `recebi: oi` no console, e a conexão
-**não** fecha.
+Esperado: duas mensagens `recebi:` no console, com `primeira` e `segunda`; a conexão
+permanece aberta entre os dois echos.
 
-Sintomas: fecha na hora do `onopen` → o `defer` está no lugar errado (ver 7.1).
-Log com bytes estranhos → faltou o XOR da máscara. Servidor logou mas o browser não
-recebeu → faltou o `Flush` depois do `Write`, ou o primeiro byte não é `0x81`.
+Sintomas: log com bytes estranhos → faltou o XOR da máscara. Servidor recebe a mensagem,
+mas o browser não recebe o echo → faltou o `Flush` depois do `Write`, ou o primeiro byte
+não é `0x81`.
 
 ---
 
 ## 7. Pendências no código
 
-### 7.1 Bug ativo
-
-`defer conn.Close()` está na **última linha** de `websocketHandler`. O defer roda quando
-a função retorna — ou seja, imediatamente depois do flush. A conexão fecha logo após o
-`101` (o browser dispara `onopen` e `onclose` em sequência). Lugar certo: logo abaixo do
-check de erro do `Hijack()`, com o loop de leitura vindo depois.
-
-### 7.2 `go vet` (Go 1.24+)
+### 7.1 `go vet` (Go 1.24+)
 
 `fmt.Fprintf(bufrw, message, accept)` com `message` sendo uma variável dispara
 *"non-constant format string in call to fmt.Fprintf"*. Vira `const`, ou concatena o
 `accept` direto (só tem uma substituição).
 
-### 7.3 Herdados, ainda não resolvidos
+### 7.2 Herdados, ainda não resolvidos
 
 - A variável `server` guarda um `*ServeMux` — é roteador, não servidor. Renomear para `mux`.
 - `fmt.Println("Error in health")` descarta o `err`. Trocar por `log.Printf("health: %v", err)`.
@@ -264,7 +279,7 @@ check de erro do `Hijack()`, com o loop de leitura vindo depois.
   frente: `//go:embed`.
 - `FileServer` faz directory listing em pasta sem `index.html`. Só saber que existe.
 
-### 7.4 Para depois — segurança e robustez
+### 7.3 Para depois — segurança e robustez
 
 - Sem checagem de `Origin` → CSWSH: qualquer site consegue abrir um WebSocket no
   servidor a partir do browser da vítima.
