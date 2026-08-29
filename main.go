@@ -89,19 +89,27 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 		"\r\n"
 
 	fmt.Fprintf(bufrw, message, accept)
-	log.Printf("Connection upgraded to WebSocket.\n")
 
 	if err := bufrw.Flush(); err != nil {
 		log.Printf("flush: %v", err)
 		return
 	}
 
+	log.Printf("Connection upgraded to WebSocket.\n")
+
 	header := make([]byte, 2)
-	if _, err = io.ReadFull(bufrw, header); err != nil {
+
+	if _, err := io.ReadFull(bufrw, header); err != nil {
 		log.Printf("read header: %v", err)
 		return
 	}
 
+	fin := header[0]&0x80 != 0
+	opcode := header[0] & 0x0F
+	masked := header[1]&0x80 != 0
+	payloadLen := int(header[1] & 0x7F)
+
+	log.Printf("frame: fin=%v opcode=%#x masked=%v len=%d", fin, opcode, masked, payloadLen)
 	log.Printf("%08b", header)
 }
 
