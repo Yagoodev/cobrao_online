@@ -90,6 +90,15 @@ exato que deve ser adicionado ou alterado, junto de uma explicação curta do qu
 representa. Ainda manter os blocos pequenos: apenas o código necessário para a etapa
 atual, nunca um arquivo inteiro adiantando os próximos passos.
 
+Para cada trecho de código apresentado, explicar em linguagem natural o que cada
+parte representa e o que ela faz no jogo ou no servidor. A explicação vem logo após
+o trecho, curta e concreta, sem assumir que o leitor infere a intenção pelo código.
+
+Indicar de forma direta o ponto da edição e a alteração final: por exemplo, "logo
+abaixo de X, adicione Y" ou "em moveSnake, substitua apenas a criação de nextHead
+por Y". Não criar uma solução incremental alternativa só para evitar uma substituição.
+Depois do trecho final, explicar em linguagem natural o que ele representa e faz.
+
 ---
 
 ## 3. Arquitetura — decisões já fechadas
@@ -196,15 +205,19 @@ Constantes de ajuste no topo do arquivo: `COLS` (21), `ROWS` (21), `BASE_STEP` (
 
 Cada etapa fecha um ciclo testável — de propósito, para caber numa live.
 
+O objetivo imediato é visualizar no navegador a cobra controlada pelo servidor.
+Ping/pong e close frame foram retirados da sequência atual; essa parte de robustez do
+protocolo pode ser retomada depois que o fluxo principal do jogo estiver visível.
+
 | # | Etapa | Status |
 |---|---|---|
 | 1 | Servidor HTTP servindo os estáticos | ✅ feito |
 | 2 | Handshake WebSocket na mão (browser conecta sem erro no console) | ✅ feito |
 | 3 | Framing: ler frame de texto e responder echo (`ws.send("oi")` → `"oi"`) | ✅ feito |
-| 4 | Ping/pong e close frame | 🟡 **próxima** |
-| 5 | Hub + registro/remoção de clientes | ⬜ |
-| 6 | Game loop com uma cobra só, movendo sozinha (no **servidor**) | ⬜ |
-| 7 | Input do teclado alterando a direção (via WS, servidor autoritativo) | ⬜ |
+| 4 | Game loop com uma cobra só, movendo e serializando o estado no **servidor** | ✅ feito |
+| 5 | Enviar snapshots via WebSocket e renderizar a cobra no navegador | 🟡 **próxima** |
+| 6 | Input do teclado alterando a direção (via WS, servidor autoritativo) | ⬜ |
+| 7 | Hub + registro/remoção de clientes | ⬜ |
 | 8 | Multiplayer: várias cobras, colisão entre elas, respawn | ⬜ |
 | 9 | Comida, pontuação, placar | ⬜ |
 

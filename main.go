@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
@@ -9,12 +10,59 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const websocketGUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+const (
+	GridCols = 21
+	GridRows = 21
+)
 
 type HealthResponse struct {
 	Status string `json:"status"`
+}
+
+type Position struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
+type Snake struct {
+	Body      []Position `json:"body"`
+	Direction Position   `json:"direction"`
+}
+
+type GameState struct {
+	Snake Snake `json:"snake"`
+}
+
+func newGameState() GameState {
+	return GameState{
+		Snake: Snake{
+			Body: []Position{
+				{X: 10, Y: 10},
+				{X: 9, Y: 10},
+				{X: 8, Y: 10},
+			},
+			Direction: Position{X: 1, Y: 0},
+		},
+	}
+}
+
+func moveSnake(game *GameState) {
+	head := game.Snake.Body[0]
+
+	nextHead := Position{
+		X: (head.X + game.Snake.Direction.X + GridCols) % GridCols,
+		Y: (head.Y + game.Snake.Direction.Y + GridRows) % GridRows,
+	}
+
+	for i := len(game.Snake.Body) - 1; i > 0; i-- {
+		game.Snake.Body[i] = game.Snake.Body[i-1]
+	}
+
+	game.Snake.Body[0] = nextHead
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -25,6 +73,29 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		fmt.Println("Error in health")
+	}
+}
+
+func writeTextFrame(bufrw *bufio.ReadWriter, payload []byte) error {
+	if len(payload) > 125 {
+		return fmt.Errorf("payload too large: %d bytes", len(payload))
+	}
+
+	frame := append([]byte{0x81, byte(len(payload))}, payload...)
+
+	if _, err := bufrw.Write(frame); err != nil {
+		return err
+	}
+
+	return bufrw.Flush()
+}
+
+func writeMessages(bufrw *bufio.ReadWriter, messages <-chan []byte) {
+	for payload := range messages {
+		if err := writeTextFrame(bufrw, payload); err != nil {
+			log.Printf("write message: %v", err)
+			return
+		}
 	}
 }
 
@@ -97,6 +168,11 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Connection upgraded to WebSocket.\n")
 
+	messages := make(chan []byte, 16)
+	defer close(messages)
+
+	go writeMessages(bufrw, messages)
+
 	for {
 		header := make([]byte, 2)
 
@@ -135,17 +211,30 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 			payload[i] ^= maskKey[i%4]
 		}
 
-		response := append([]byte{0x81, byte(len(payload))}, payload...)
-
-		if _, err := bufrw.Write(response); err != nil {
+		if err := writeTextFrame(bufrw, payload); err != nil {
 			log.Printf("write echo: %v", err)
 			return
 		}
+	}
+}
 
-		if err := bufrw.Flush(); err != nil {
-			log.Printf("flush echo: %v", err)
-			return
+func runGameLoop() {
+	game := newGameState()
+
+	ticker := time.NewTicker(125 * time.Millisecond)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		moveSnake(&game)
+
+		snapshot, err := json.Marshal(game)
+
+		if err != nil {
+			log.Printf("Error marshalling game state: %v", err)
+			continue
 		}
+
+		log.Printf("tick: %s", snapshot)
 	}
 }
 
@@ -158,6 +247,7 @@ func main() {
 
 	fmt.Printf("Server running on the port: %d\n", 8080)
 
+	go runGameLoop()
 	err := http.ListenAndServe(":8080", server)
 
 	if err != nil {
