@@ -37,6 +37,11 @@ type GameState struct {
 	Snake Snake `json:"snake"`
 }
 
+type ClientMessage struct {
+	Type      string `json:"type"`
+	Direction string `json:"direction"`
+}
+
 func newGameState() GameState {
 	return GameState{
 		Snake: Snake{
@@ -214,10 +219,14 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 			payload[i] ^= maskKey[i%4]
 		}
 
-		if err := writeTextFrame(bufrw, payload); err != nil {
-			log.Printf("write echo: %v", err)
-			return
+		var message ClientMessage
+
+		if err := json.Unmarshal(payload, &message); err != nil {
+			log.Printf("invalid client message: %v", err)
+			continue
 		}
+
+		log.Printf("client message: type=%s direction=%s", message.Type, message.Direction)
 	}
 }
 
