@@ -168,10 +168,13 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Connection upgraded to WebSocket.\n")
 
+	done := make(chan struct{})
+	defer close(done)
+
 	messages := make(chan []byte, 16)
-	defer close(messages)
 
 	go writeMessages(bufrw, messages)
+	go runGameLoop(messages, done)
 
 	for {
 		header := make([]byte, 2)
@@ -218,7 +221,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func runGameLoop() {
+func runGameLoop(messages chan<- []byte, done <-chan struct{}) {
 	game := newGameState()
 
 	ticker := time.NewTicker(125 * time.Millisecond)
@@ -234,7 +237,12 @@ func runGameLoop() {
 			continue
 		}
 
-		log.Printf("tick: %s", snapshot)
+		select {
+		case messages <- snapshot:
+		case <-done:
+			close(messages)
+			return
+		}
 	}
 }
 
@@ -247,7 +255,6 @@ func main() {
 
 	fmt.Printf("Server running on the port: %d\n", 8080)
 
-	go runGameLoop()
 	err := http.ListenAndServe(":8080", server)
 
 	if err != nil {
