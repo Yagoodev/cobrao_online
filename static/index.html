@@ -8,47 +8,13 @@
 </head>
 <body>
   <main class="game">
-    <header class="hud">
-      <h1 class="logo">Cobrinha</h1>
-      <div class="stats">
-        <div class="stat">
-          <span class="stat__label">Pontos</span>
-          <strong class="stat__value" id="score">0</strong>
-        </div>
-        <div class="stat">
-          <span class="stat__label">Recorde</span>
-          <strong class="stat__value" id="best">0</strong>
-        </div>
-      </div>
-    </header>
-
     <div class="stage">
       <canvas id="board"></canvas>
-
-      <div class="overlay" id="overlay">
-        <div class="panel">
-          <h2 class="panel__title" id="overlayTitle">Pronto?</h2>
-          <p class="panel__text" id="overlayText">Use as setas ou WASD para mover a cobrinha.</p>
-          <button class="btn" id="playBtn" type="button">Jogar</button>
-        </div>
-      </div>
+      <div class="overlay" id="overlay"></div>
     </div>
-
-    <footer class="controls">
-      <div class="pad" aria-label="Controles direcionais">
-        <button class="pad__btn pad__btn--up" data-dir="up" type="button" aria-label="Cima">▲</button>
-        <button class="pad__btn pad__btn--left" data-dir="left" type="button" aria-label="Esquerda">◀</button>
-        <button class="pad__btn pad__btn--right" data-dir="right" type="button" aria-label="Direita">▶</button>
-        <button class="pad__btn pad__btn--down" data-dir="down" type="button" aria-label="Baixo">▼</button>
-      </div>
-      <p class="hint">
-        <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> ou <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> para mover
-        &nbsp;·&nbsp; <kbd>Espaço</kbd> para pausar &nbsp;·&nbsp; <kbd>R</kbd> para reiniciar
-      </p>
-    </footer>
   </main>
 
-  <!-- <script src="/js/game.js"></script> -->
+
    <script src="/js/server.js"></script>
 </body>
 </html>
