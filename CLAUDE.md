@@ -99,6 +99,13 @@ abaixo de X, adicione Y" ou "em moveSnake, substitua apenas a criação de nextH
 por Y". Não criar uma solução incremental alternativa só para evitar uma substituição.
 Depois do trecho final, explicar em linguagem natural o que ele representa e faz.
 
+### 2.9 Manter a porta 8080 livre ao terminar
+
+Não deixar `go run .`, o binário `cobrinha.exe` ou qualquer outro servidor do projeto
+rodando depois de testes feitos pelo assistente. Se for necessário subir o servidor para
+uma verificação, encerrá-lo ao final e confirmar que não existe processo ouvindo na porta
+`8080` antes de responder ao Yago.
+
 ---
 
 ## 3. Arquitetura — decisões já fechadas
