@@ -2,19 +2,29 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Cobrinha</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#e9ede2">
+  <title>Cobrão — A clareira</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <main class="game">
-    <div class="stage">
-      <canvas id="board"></canvas>
-      <div class="overlay" id="overlay"></div>
-    </div>
+  <header class="header">
+    <a class="brand" href="/" aria-label="Cobrão, início"><span class="brand-mark" aria-hidden="true">c.</span>cobrão<span class="brand-detail">ONLINE</span></a>
+    <span class="connection" id="connection" role="status" data-state="connecting"><i aria-hidden="true"></i><span>Conectando</span></span>
+  </header>
+  <main class="game" aria-label="Arena do jogo">
+    <section class="stage" aria-label="Clareira flutuante em visão isométrica">
+      <canvas id="board" tabindex="0" aria-label="Arena 3D. Use as setas do teclado para mover a cobra."></canvas>
+      <div class="overlay" id="overlay" role="status">Preparando a clareira…</div>
+    </section>
   </main>
-
-
-   <script src="/js/server.js"></script>
+  <footer class="footer">
+    <div class="location"><span class="eyebrow">UM PEQUENO MUNDO LÁ EM CIMA</span><h1>A clareira<span>.</span></h1><p>Entre pedras antigas e um pouco de verde.</p></div>
+    <div class="controls" aria-label="Controles"><span class="keys" aria-hidden="true"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><span>para explorar</span></div>
+    <span class="edition">ARENA 01 <span aria-hidden="true">/</span> FLORESTA</span>
+  </footer>
+  <noscript><p class="overlay">Ative o JavaScript para visualizar a arena.</p></noscript>
+  <script type="module" src="/js/server.js"></script>
 </body>
 </html>

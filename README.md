@@ -1,5 +1,26 @@
 # Cobrinha
 
+## Arena 3D
+
+O visual atual é uma clareira flutuante em Three.js, com câmera ortográfica,
+muros de pedra, escadaria e vegetação procedural. A arena fica centralizada e
+se ajusta ao tamanho da janela, mantendo espaço ao redor.
+
+- `static/js/arena.js`: cenário, iluminação, enquadramento e desenho dos snapshots.
+- `static/js/server.js`: conexão WebSocket e envio das setas do teclado.
+- `static/css/style.css`: layout e identidade visual responsivos.
+- `static/vendor/three/`: Three.js 0.180.0 local, com licença MIT; sem instalação npm ou build.
+
+Execute `go run .` e abra `http://localhost:8080`. Requer navegador com WebGL 2.
+A vegetação e os muros são decorativos: o grid continua 21×21 e as regras do
+servidor permanecem iguais, incluindo atravessar as bordas. A interface mostra
+o estado real da conexão; se o servidor desconectar, o cenário permanece visível.
+
+O renderer desenha quando recebe snapshots ou quando a janela muda de tamanho,
+sem um loop contínuo de animação. A ilha mantém a mesma composição a cada recarga.
+
+As seções abaixo também documentam o protótipo anterior.
+
 Jogo da cobrinha rodando em `<canvas>`, servido por um servidor HTTP escrito em Go
 sem dependências externas (apenas a biblioteca padrão).
 
