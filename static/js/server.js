@@ -34,4 +34,25 @@
     const game = JSON.parse(e.data);
     drawGame(game);
   }
+
+  const directions = {
+    ArrowUp: "up",
+    ArrowDown: "down",
+    ArrowLeft: "left",
+    ArrowRight: "right"
+  }
+
+  window.addEventListener("keydown", (event) => {
+    const direction = directions[event.key];
+
+    if (!direction) return;
+
+    event.preventDefault();
+    if (ws.readyState !== WebSocket.OPEN) return;
+
+    ws.send(JSON.stringify({
+      type: "direction",
+      direction: direction
+    }));
+  });
 })()

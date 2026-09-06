@@ -70,6 +70,19 @@ func moveSnake(game *GameState) {
 	game.Snake.Body[0] = nextHead
 }
 
+func applyDirection(game *GameState, direction string) {
+	switch direction {
+	case "up":
+		game.Snake.Direction = Position{X: 0, Y: -1}
+	case "down":
+		game.Snake.Direction = Position{X: 0, Y: 1}
+	case "left":
+		game.Snake.Direction = Position{X: -1, Y: 0}
+	case "right":
+		game.Snake.Direction = Position{X: 1, Y: 0}
+	}
+}
+
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	response := HealthResponse{Status: "ok"}
@@ -177,9 +190,10 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 	defer close(done)
 
 	messages := make(chan []byte, 16)
+	direction := make(chan string, 2)
 
 	go writeMessages(bufrw, messages)
-	go runGameLoop(messages, done)
+	go runGameLoop(messages, direction, done)
 
 	for {
 		header := make([]byte, 2)
@@ -227,27 +241,47 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Printf("client message: type=%s direction=%s", message.Type, message.Direction)
+
+		if message.Type != "direction" {
+			continue
+		}
+
+		select {
+		case direction <- message.Direction:
+		default:
+			log.Printf("direction queue full; dropping %q", message.Direction)
+		}
 	}
 }
 
-func runGameLoop(messages chan<- []byte, done <-chan struct{}) {
+func runGameLoop(messages chan<- []byte, direction <-chan string, done <-chan struct{}) {
 	game := newGameState()
 
 	ticker := time.NewTicker(125 * time.Millisecond)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		moveSnake(&game)
-
-		snapshot, err := json.Marshal(game)
-
-		if err != nil {
-			log.Printf("Error marshalling game state: %v", err)
-			continue
-		}
-
+	for {
 		select {
-		case messages <- snapshot:
+		case direction := <-direction:
+			applyDirection(&game, direction)
+
+		case <-ticker.C:
+			moveSnake(&game)
+
+			snapshot, err := json.Marshal(game)
+
+			if err != nil {
+				log.Printf("Error marshalling game state: %v", err)
+				continue
+			}
+
+			select {
+			case messages <- snapshot:
+			case <-done:
+				close(messages)
+				return
+			}
+
 		case <-done:
 			close(messages)
 			return
