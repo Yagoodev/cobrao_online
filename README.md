@@ -84,8 +84,15 @@ const MIN_STEP = 70;     // passo mais rápido possível
 const STEP_DECAY = 4;    // ms a menos por comida
 ```
 
-## Próximos passos
+## Progresso da versão online
 
-- Implementar leitura e escrita de frames de WebSocket em `main.go`.
-- Sincronizar o estado do jogo pelo servidor para o modo online.
-- Placar compartilhado entre os jogadores.
+- [x] Leitura e escrita de frames curtos de WebSocket em `main.go`.
+- [x] Movimento no servidor e envio de snapshots para renderização no navegador.
+- [x] Setas do teclado enviando direção via WebSocket, com teste manual confirmado.
+- [ ] Hub com registro e remoção de clientes — próximo passo.
+- [ ] Multiplayer: várias cobras na mesma arena, colisões e respawn.
+- [ ] Comida, pontuação e placar compartilhado.
+
+Atualizado em 4 de setembro de 2026. O cliente atual é `static/js/server.js`;
+cada conexão ainda tem seu próprio jogo. As descrições do protótipo single-player
+acima são históricas: pausa, reinício, comida e colisões ainda não foram migrados.

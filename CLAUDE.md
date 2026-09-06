@@ -1,7 +1,7 @@
 # CLAUDE.md — Cobrinha Multiplayer em Go
 
 > Contexto e regras deste repositório. Leia antes de responder qualquer coisa.
-> Snapshot: 29 de agosto de 2026.
+> Snapshot: 4 de setembro de 2026.
 
 ---
 
@@ -149,6 +149,13 @@ serializa o JSON **uma vez** → manda os mesmos bytes para todos.
 
 ## 4. Estado do código
 
+**Atualização de 4 de setembro de 2026:** o cliente ativo é `static/js/server.js`.
+Ele desenha snapshots e envia as setas como JSON de direção. No Go, `runGameLoop`
+recebe as direções por channel, move a cobra a cada 125 ms e envia snapshots por
+uma goroutine de escrita. Cada conexão tem um jogo separado. As descrições abaixo
+do echo e do antigo `game.js` são históricas; comida, colisões, pausa e reinício
+ainda não foram migrados. A cobra atual atravessa as bordas do grid.
+
 ### Ambiente
 
 - Módulo `yagodev/cobrinha`, Go 1.26+.
@@ -212,9 +219,10 @@ Constantes de ajuste no topo do arquivo: `COLS` (21), `ROWS` (21), `BASE_STEP` (
 
 Cada etapa fecha um ciclo testável — de propósito, para caber numa live.
 
-O objetivo imediato é visualizar no navegador a cobra controlada pelo servidor.
-Ping/pong e close frame foram retirados da sequência atual; essa parte de robustez do
-protocolo pode ser retomada depois que o fluxo principal do jogo estiver visível.
+Snapshots e controle pelo teclado estão concluídos, com teste manual confirmado
+pelo Yago em 4 de setembro de 2026. O próximo marco é o Hub: registrar e remover
+clientes para preparar a arena compartilhada. Hoje cada conexão tem seu próprio jogo.
+Ping/pong e close frame continuam fora da sequência imediata.
 
 | # | Etapa | Status |
 |---|---|---|
@@ -222,15 +230,18 @@ protocolo pode ser retomada depois que o fluxo principal do jogo estiver visíve
 | 2 | Handshake WebSocket na mão (browser conecta sem erro no console) | ✅ feito |
 | 3 | Framing: ler frame de texto e responder echo (`ws.send("oi")` → `"oi"`) | ✅ feito |
 | 4 | Game loop com uma cobra só, movendo e serializando o estado no **servidor** | ✅ feito |
-| 5 | Enviar snapshots via WebSocket e renderizar a cobra no navegador | 🟡 **próxima** |
-| 6 | Input do teclado alterando a direção (via WS, servidor autoritativo) | ⬜ |
-| 7 | Hub + registro/remoção de clientes | ⬜ |
+| 5 | Enviar snapshots via WebSocket e renderizar a cobra no navegador | ✅ feito |
+| 6 | Input do teclado alterando a direção (via WS, servidor autoritativo) | ✅ feito |
+| 7 | Hub + registro/remoção de clientes | 🟡 **próxima** |
 | 8 | Multiplayer: várias cobras, colisão entre elas, respawn | ⬜ |
 | 9 | Comida, pontuação, placar | ⬜ |
 
 ---
 
 ## 6. Framing e echo — concluído
+
+O teste de echo desta seção é histórico. O servidor atual recebe JSON de direção
+e envia snapshots, em vez de devolver o texto recebido.
 
 Depois do `101` a conexão não fala mais HTTP. Tudo que trafega são frames do RFC 6455.
 
