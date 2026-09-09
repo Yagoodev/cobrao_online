@@ -269,11 +269,12 @@ export function createArena(canvas) {
       const i = segments.length;
       const part = new THREE.Group();
       snake.add(part);
-      blob(0, 0, 0, i === 0 ? 0.52 : 0.43, 0.4, 0.44, i === 0 ? "#d5ab48" : "#bd943c", false, part);
+      const size = i === 0 ? 0.9 : 0.78;
+      box(size, 0.72, size, 0, 0, 0, i === 0 ? "#2f9e44" : "#3fb950", 0, part);
       if (i === 0) {
         for (const side of [-1, 1]) {
-          blob(side * 0.26, 0.24, -0.29, 0.13, 0.14, 0.10, "#fff4cf", false, part);
-          blob(side * 0.26, 0.24, -0.37, 0.065, 0.075, 0.035, "#293c2b", false, part);
+          box(0.18, 0.18, 0.08, side * 0.25, 0.15, -0.46, "#f4ffe8", 0, part);
+          box(0.08, 0.09, 0.04, side * 0.25, 0.15, -0.52, "#17351f", 0, part);
         }
       }
       segments.push(part);
