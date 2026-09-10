@@ -42,6 +42,43 @@ type ClientMessage struct {
 	Direction string `json:"direction"`
 }
 
+type Client struct {
+	messages chan []byte
+}
+
+type Hub struct {
+	clients    map[*Client]struct{}
+	register   chan *Client
+	unregister chan *Client
+}
+
+func newHub() *Hub {
+	return &Hub{
+		clients:    make(map[*Client]struct{}),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+	}
+}
+
+func runHub(hub *Hub) {
+	for {
+		select {
+		case client := <-hub.register:
+			hub.clients[client] = struct{}{}
+			log.Printf("client registred: %d connected", len(hub.clients))
+
+		case client := <-hub.unregister:
+			if _, exists := hub.clients[client]; !exists {
+				continue
+			}
+
+			delete(hub.clients, client)
+			close(client.messages)
+			log.Printf("client unregistred: %d connected", len(hub.clients))
+		}
+	}
+}
+
 func newGameState() GameState {
 	return GameState{
 		Snake: Snake{
