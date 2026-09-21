@@ -50,6 +50,7 @@ type Hub struct {
 	clients    map[*Client]struct{}
 	register   chan *Client
 	unregister chan *Client
+	broadcast  chan []byte
 }
 
 func newHub() *Hub {
@@ -57,6 +58,7 @@ func newHub() *Hub {
 		clients:    make(map[*Client]struct{}),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
+		broadcast:  make(chan []byte),
 	}
 }
 
@@ -73,8 +75,16 @@ func runHub(hub *Hub) {
 			}
 
 			delete(hub.clients, client)
-			close(client.messages)
 			log.Printf("client unregistred: %d connected", len(hub.clients))
+
+		case snapshot := <-hub.broadcast:
+			for client := range hub.clients {
+				select {
+				case client.messages <- snapshot:
+				default:
+					log.Printf("client queue full; dropping message")
+				}
+			}
 		}
 	}
 }
@@ -154,7 +164,7 @@ func writeMessages(bufrw *bufio.ReadWriter, messages <-chan []byte) {
 	}
 }
 
-func websocketHandler(w http.ResponseWriter, r *http.Request) {
+func websocketHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("WebSocket connection requested.\n")
 
@@ -223,14 +233,22 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Connection upgraded to WebSocket.\n")
 
+	client := &Client{
+		messages: make(chan []byte, 16),
+	}
+
+	hub.register <- client
+	defer func() {
+		hub.unregister <- client
+	}()
+
 	done := make(chan struct{})
 	defer close(done)
 
-	messages := make(chan []byte, 16)
 	direction := make(chan string, 2)
 
-	go writeMessages(bufrw, messages)
-	go runGameLoop(messages, direction, done)
+	go writeMessages(bufrw, client.messages)
+	go runGameLoop(client.messages, direction, done)
 
 	for {
 		header := make([]byte, 2)
@@ -328,9 +346,14 @@ func runGameLoop(messages chan<- []byte, direction <-chan string, done <-chan st
 
 func main() {
 
+	hub := newHub()
+	go runHub(hub)
+
 	server := http.NewServeMux()
 	server.Handle("/", http.FileServer(http.Dir("static")))
-	server.HandleFunc("/ws", websocketHandler)
+	server.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		websocketHandler(hub, w, r)
+	})
 	server.HandleFunc("/health", healthHandler)
 
 	fmt.Printf("Server running on the port: %d\n", 8080)

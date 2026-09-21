@@ -110,10 +110,14 @@ const STEP_DECAY = 4;    // ms a menos por comida
 - [x] Leitura e escrita de frames curtos de WebSocket em `main.go`.
 - [x] Movimento no servidor e envio de snapshots para renderização no navegador.
 - [x] Setas do teclado enviando direção via WebSocket, com teste manual confirmado.
-- [ ] Hub com registro e remoção de clientes — próximo passo.
+- [x] Hub global com registro/remoção de clientes e channel de broadcast.
+- [ ] Mover o game loop para uma única instância compartilhada — próximo passo.
 - [ ] Multiplayer: várias cobras na mesma arena, colisões e respawn.
 - [ ] Comida, pontuação e placar compartilhado.
 
-Atualizado em 4 de setembro de 2026. O cliente atual é `static/js/server.js`;
-cada conexão ainda tem seu próprio jogo. As descrições do protótipo single-player
-acima são históricas: pausa, reinício, comida e colisões ainda não foram migrados.
+Atualizado em 10 de setembro de 2026. O cliente atual é `static/js/server.js`.
+O Hub já acompanha conexões e sabe distribuir um snapshot por `broadcast`, mas cada
+conexão ainda inicia seu próprio `runGameLoop`, que envia diretamente para a fila do
+cliente. O próximo passo é manter apenas um game loop global e encaminhar seus
+snapshots pelo Hub. As descrições do protótipo single-player acima são históricas:
+pausa, reinício, comida e colisões ainda não foram migrados.
