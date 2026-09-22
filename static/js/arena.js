@@ -1,4 +1,5 @@
 import * as THREE from "../vendor/three/three.module.min.js";
+import { createDissolvingPillar } from "./floating-pillar.js";
 
 const GRID_SIZE = 21;
 const FLOOR_Y = 0.36;
@@ -73,6 +74,66 @@ export function createArena(canvas) {
     object.scale.set(sx, sy, sz);
     return object;
   }
+
+  const amber = new THREE.Color(0xffb000);
+  const sunMaterial = new THREE.MeshStandardMaterial({
+    color: amber,
+    emissive: 0xff7a00,
+    emissiveIntensity: 0.72,
+    roughness: 0.78,
+    metalness: 0,
+  });
+  const haloMaterial = new THREE.MeshBasicMaterial({
+    color: amber,
+    transparent: true,
+    opacity: 0.11,
+    side: THREE.BackSide,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+  });
+
+  // The sun is real scene geometry rather than a CSS/background image. Its halo
+  // is a second, back-faced sphere, so the silhouette keeps volume from any view.
+  const backgroundSun = new THREE.Group();
+  backgroundSun.name = "background-sun";
+  backgroundSun.position.set(-15.5, -7, -20.5);
+  const sunSphere = new THREE.Mesh(new THREE.SphereGeometry(8.5, 32, 20), sunMaterial);
+  sunSphere.name = "sun-sphere";
+  const sunHalo = new THREE.Mesh(new THREE.SphereGeometry(10.2, 32, 20), haloMaterial);
+  sunHalo.name = "sun-halo";
+  backgroundSun.add(sunSphere, sunHalo);
+  scene.add(backgroundSun);
+
+  // Floating perimeter monoliths follow the concept's cuboid-to-point silhouette.
+  // They stay outside the 21 x 21 game grid and never participate in collisions.
+  const perimeterPillars = new THREE.Group();
+  perimeterPillars.name = "perimeter-pillars";
+  scene.add(perimeterPillars);
+
+  const particlePillars = [];
+  [
+    [-16.6, -1.2, -8.8, 0.84, 0.15],
+    [-16.9, -1.8, 6.2, 0.66, -0.18],
+    [-10.5, -1.4, 16.1, 0.78, 0.08],
+    [2.2, -2.1, 17.2, 0.58, -0.12],
+    [14.4, -1.15, 13.7, 0.9, 0.16],
+    [17.1, -1.75, 2.3, 0.62, -0.08],
+    [16.2, -1.3, -11.5, 0.82, 0.12],
+    [5.9, -2.05, -17.4, 0.56, -0.15],
+    [-8.1, -1.55, -16.5, 0.7, 0.1],
+  ].forEach(([x, y, z, scale, rotation], index) => {
+    const pillar = createDissolvingPillar({
+      seed: 1730 + index * 911,
+      additive: false,
+      intensity: 0.62,
+    });
+    pillar.position.set(x, y, z);
+    pillar.rotation.y = rotation;
+    pillar.scale.setScalar(scale * 0.62);
+    perimeterPillars.add(pillar);
+    particlePillars.push(pillar);
+  });
 
   // The soil is visible below the turf, separated from the soft shadow underneath.
   box(25.4, 1.35, 25.4, 0, -1.4, 0, "#756b51", 0.4);
@@ -292,6 +353,7 @@ export function createArena(canvas) {
 
   // Fit the projected island bounds, not the window, keeping equal breathing room.
   const bounds = new THREE.Box3().setFromObject(island);
+  bounds.union(new THREE.Box3().setFromObject(perimeterPillars));
   camera.updateMatrixWorld(true);
   const projected = new THREE.Box3();
   for (const x of [bounds.min.x, bounds.max.x]) {
@@ -302,7 +364,12 @@ export function createArena(canvas) {
   const center = projected.getCenter(new THREE.Vector3());
   const size = projected.getSize(new THREE.Vector3());
   let disposed = false;
-  function render() { if (!disposed && !document.hidden) renderer.render(scene, camera); }
+  function render() {
+    if (disposed || document.hidden) return;
+    const elapsed = performance.now() / 1000;
+    particlePillars.forEach((pillar) => pillar.userData.update(elapsed));
+    renderer.render(scene, camera);
+  }
   function resize() {
     if (disposed) return;
     const { width, height } = canvas.getBoundingClientRect();
