@@ -1,7 +1,7 @@
 # CLAUDE.md — Cobrinha Multiplayer em Go
 
 > Contexto e regras deste repositório. Leia antes de responder qualquer coisa.
-> Snapshot: 4 de setembro de 2026.
+> Snapshot: 10 de setembro de 2026.
 
 ---
 
@@ -149,12 +149,19 @@ serializa o JSON **uma vez** → manda os mesmos bytes para todos.
 
 ## 4. Estado do código
 
-**Atualização de 4 de setembro de 2026:** o cliente ativo é `static/js/server.js`.
-Ele desenha snapshots e envia as setas como JSON de direção. No Go, `runGameLoop`
-recebe as direções por channel, move a cobra a cada 125 ms e envia snapshots por
-uma goroutine de escrita. Cada conexão tem um jogo separado. As descrições abaixo
-do echo e do antigo `game.js` são históricas; comida, colisões, pausa e reinício
-ainda não foram migrados. A cobra atual atravessa as bordas do grid.
+**Atualização de 10 de setembro de 2026:** o cliente ativo é `static/js/server.js`.
+Ele desenha snapshots e envia as setas como JSON de direção. O servidor agora cria
+um único `Hub` no `main`, registra cada `Client` após o upgrade WebSocket e o remove
+quando o handler termina. O Hub também possui `broadcast chan []byte` e distribui
+cada snapshot recebido para o channel `messages` de todos os clientes sem bloquear
+em filas cheias.
+
+O broadcast ainda não recebe snapshots: cada conexão continua criando seu próprio
+`runGameLoop`, seu próprio channel de direção e enviando diretamente para
+`client.messages`. A próxima mudança deve deixar apenas um game loop global e fazer
+seus snapshots passarem por `hub.broadcast`. As descrições abaixo do echo e do antigo
+`game.js` são históricas; comida, colisões, pausa e reinício ainda não foram migrados.
+A cobra atual atravessa as bordas do grid.
 
 ### Ambiente
 
@@ -220,9 +227,12 @@ Constantes de ajuste no topo do arquivo: `COLS` (21), `ROWS` (21), `BASE_STEP` (
 Cada etapa fecha um ciclo testável — de propósito, para caber numa live.
 
 Snapshots e controle pelo teclado estão concluídos, com teste manual confirmado
-pelo Yago em 4 de setembro de 2026. O próximo marco é o Hub: registrar e remover
-clientes para preparar a arena compartilhada. Hoje cada conexão tem seu próprio jogo.
-Ping/pong e close frame continuam fora da sequência imediata.
+pelo Yago em 4 de setembro de 2026. Em 10 de setembro, o Hub foi ligado ao servidor:
+ele registra e remove clientes e já contém o channel de broadcast com distribuição
+não bloqueante. Hoje cada conexão ainda tem seu próprio game loop; portanto, o
+broadcast existe, mas nenhum snapshot é enviado para ele. O próximo marco é criar
+uma única instância compartilhada do game loop e fazê-la publicar no Hub. Ping/pong
+e close frame continuam fora da sequência imediata.
 
 | # | Etapa | Status |
 |---|---|---|
@@ -232,9 +242,10 @@ Ping/pong e close frame continuam fora da sequência imediata.
 | 4 | Game loop com uma cobra só, movendo e serializando o estado no **servidor** | ✅ feito |
 | 5 | Enviar snapshots via WebSocket e renderizar a cobra no navegador | ✅ feito |
 | 6 | Input do teclado alterando a direção (via WS, servidor autoritativo) | ✅ feito |
-| 7 | Hub + registro/remoção de clientes | 🟡 **próxima** |
-| 8 | Multiplayer: várias cobras, colisão entre elas, respawn | ⬜ |
-| 9 | Comida, pontuação, placar | ⬜ |
+| 7 | Hub + registro/remoção de clientes + infraestrutura de broadcast | ✅ feito |
+| 8 | Game loop único publicando snapshots no Hub | 🟡 **próxima** |
+| 9 | Multiplayer: várias cobras, colisão entre elas, respawn | ⬜ |
+| 10 | Comida, pontuação, placar | ⬜ |
 
 ---
 

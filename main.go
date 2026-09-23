@@ -42,6 +42,55 @@ type ClientMessage struct {
 	Direction string `json:"direction"`
 }
 
+type Client struct {
+	messages chan []byte
+}
+
+type Hub struct {
+	clients    map[*Client]struct{}
+	register   chan *Client
+	unregister chan *Client
+	broadcast  chan []byte
+	input      chan string
+}
+
+func newHub() *Hub {
+	return &Hub{
+		clients:    make(map[*Client]struct{}),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		broadcast:  make(chan []byte),
+		input:      make(chan string, 8),
+	}
+}
+
+func runHub(hub *Hub) {
+	for {
+		select {
+		case client := <-hub.register:
+			hub.clients[client] = struct{}{}
+			log.Printf("client registred: %d connected", len(hub.clients))
+
+		case client := <-hub.unregister:
+			if _, exists := hub.clients[client]; !exists {
+				continue
+			}
+
+			delete(hub.clients, client)
+			log.Printf("client unregistred: %d connected", len(hub.clients))
+
+		case snapshot := <-hub.broadcast:
+			for client := range hub.clients {
+				select {
+				case client.messages <- snapshot:
+				default:
+					log.Printf("client queue full; dropping message")
+				}
+			}
+		}
+	}
+}
+
 func newGameState() GameState {
 	return GameState{
 		Snake: Snake{
@@ -117,7 +166,7 @@ func writeMessages(bufrw *bufio.ReadWriter, messages <-chan []byte) {
 	}
 }
 
-func websocketHandler(w http.ResponseWriter, r *http.Request) {
+func websocketHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("WebSocket connection requested.\n")
 
@@ -186,14 +235,16 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Connection upgraded to WebSocket.\n")
 
-	done := make(chan struct{})
-	defer close(done)
+	client := &Client{
+		messages: make(chan []byte, 16),
+	}
 
-	messages := make(chan []byte, 16)
-	direction := make(chan string, 2)
+	hub.register <- client
+	defer func() {
+		hub.unregister <- client
+	}()
 
-	go writeMessages(bufrw, messages)
-	go runGameLoop(messages, direction, done)
+	go writeMessages(bufrw, client.messages)
 
 	for {
 		header := make([]byte, 2)
@@ -247,14 +298,14 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		select {
-		case direction <- message.Direction:
+		case hub.input <- message.Direction:
 		default:
 			log.Printf("direction queue full; dropping %q", message.Direction)
 		}
 	}
 }
 
-func runGameLoop(messages chan<- []byte, direction <-chan string, done <-chan struct{}) {
+func runGameLoop(hub *Hub) {
 	game := newGameState()
 
 	ticker := time.NewTicker(125 * time.Millisecond)
@@ -262,7 +313,7 @@ func runGameLoop(messages chan<- []byte, direction <-chan string, done <-chan st
 
 	for {
 		select {
-		case direction := <-direction:
+		case direction := <-hub.input:
 			applyDirection(&game, direction)
 
 		case <-ticker.C:
@@ -275,25 +326,22 @@ func runGameLoop(messages chan<- []byte, direction <-chan string, done <-chan st
 				continue
 			}
 
-			select {
-			case messages <- snapshot:
-			case <-done:
-				close(messages)
-				return
-			}
-
-		case <-done:
-			close(messages)
-			return
+			hub.broadcast <- snapshot
 		}
 	}
 }
 
 func main() {
 
+	hub := newHub()
+	go runHub(hub)
+	go runGameLoop(hub)
+
 	server := http.NewServeMux()
 	server.Handle("/", http.FileServer(http.Dir("static")))
-	server.HandleFunc("/ws", websocketHandler)
+	server.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		websocketHandler(hub, w, r)
+	})
 	server.HandleFunc("/health", healthHandler)
 
 	fmt.Printf("Server running on the port: %d\n", 8080)

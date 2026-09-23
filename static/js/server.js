@@ -7,7 +7,7 @@ function setConnection(state, label) {
 }
 
 async function start() {
-  // Dynamic import keeps loading/WebGL failures visible instead of leaving a blank page.
+  // Dynamic import keeps loading failures visible instead of leaving a blank page.
   const { createArena } = await import("./arena.js");
   const arena = createArena(document.getElementById("board"));
   overlay.hidden = true;
@@ -42,6 +42,6 @@ async function start() {
 start().catch((error) => {
   console.error("Não foi possível iniciar a arena:", error);
   overlay.hidden = false;
-  overlay.textContent = "Não foi possível abrir a arena 3D. Verifique se a aceleração gráfica está ativada e recarregue a página.";
+  overlay.textContent = "Não foi possível abrir a arena. Recarregue a página.";
   setConnection("offline", "Arena indisponível");
 });
