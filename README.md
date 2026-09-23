@@ -1,23 +1,23 @@
 # Cobrinha
 
-## Arena 3D
+## Arena LCD
 
-O visual atual é uma clareira flutuante em Three.js, com câmera ortográfica,
-muros de pedra, escadaria e vegetação procedural. A arena fica centralizada e
-se ajusta ao tamanho da janela, mantendo espaço ao redor.
+O visual atual imita o visor monocromático de um celular de 1997: moldura de
+plástico fosco em CSS e uma tela LCD desenhada inteira em `<canvas>` 2D, sem
+WebGL e sem dependências.
 
-- `static/js/arena.js`: cenário, iluminação, enquadramento e desenho dos snapshots.
+- `static/js/arena.js`: LCD, grade, HUD, cobra e fruta; fonte bitmap 5x7 feita à mão.
 - `static/js/server.js`: conexão WebSocket e envio das setas do teclado.
-- `static/css/style.css`: layout e identidade visual responsivos.
-- `static/vendor/three/`: Three.js 0.180.0 local, com licença MIT; sem instalação npm ou build.
+- `static/css/style.css`: moldura, layout e identidade visual responsivos.
 
-Execute `go run .` e abra `http://localhost:8080`. Requer navegador com WebGL 2.
-A vegetação e os muros são decorativos: o grid continua 21×21 e as regras do
-servidor permanecem iguais, incluindo atravessar as bordas. A interface mostra
-o estado real da conexão; se o servidor desconectar, o cenário permanece visível.
+Execute `go run .` e abra `http://localhost:8080`. O grid continua 21x21 e as
+regras do servidor permanecem iguais, incluindo atravessar as bordas. A paleta
+tem quatro tons de verde e o render acontece quando chega um snapshot ou quando
+a janela muda de tamanho, sem loop contínuo de animação.
 
-O renderer desenha quando recebe snapshots ou quando a janela muda de tamanho,
-sem um loop contínuo de animação. A ilha mantém a mesma composição a cada recarga.
+O servidor ainda não tem comida nem pontuação: a fruta fica numa célula fixa e o
+`SCORE` é derivado do tamanho do corpo, até que os snapshots passem a carregar
+`food` e `score`.
 
 As seções abaixo também documentam o protótipo anterior.
 

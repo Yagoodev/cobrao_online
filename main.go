@@ -51,6 +51,7 @@ type Hub struct {
 	register   chan *Client
 	unregister chan *Client
 	broadcast  chan []byte
+	input      chan string
 }
 
 func newHub() *Hub {
@@ -59,6 +60,7 @@ func newHub() *Hub {
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		broadcast:  make(chan []byte),
+		input:      make(chan string, 8),
 	}
 }
 
@@ -242,13 +244,7 @@ func websocketHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		hub.unregister <- client
 	}()
 
-	done := make(chan struct{})
-	defer close(done)
-
-	direction := make(chan string, 2)
-
 	go writeMessages(bufrw, client.messages)
-	go runGameLoop(client.messages, direction, done)
 
 	for {
 		header := make([]byte, 2)
@@ -302,14 +298,14 @@ func websocketHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		}
 
 		select {
-		case direction <- message.Direction:
+		case hub.input <- message.Direction:
 		default:
 			log.Printf("direction queue full; dropping %q", message.Direction)
 		}
 	}
 }
 
-func runGameLoop(messages chan<- []byte, direction <-chan string, done <-chan struct{}) {
+func runGameLoop(hub *Hub) {
 	game := newGameState()
 
 	ticker := time.NewTicker(125 * time.Millisecond)
@@ -317,7 +313,7 @@ func runGameLoop(messages chan<- []byte, direction <-chan string, done <-chan st
 
 	for {
 		select {
-		case direction := <-direction:
+		case direction := <-hub.input:
 			applyDirection(&game, direction)
 
 		case <-ticker.C:
@@ -330,16 +326,7 @@ func runGameLoop(messages chan<- []byte, direction <-chan string, done <-chan st
 				continue
 			}
 
-			select {
-			case messages <- snapshot:
-			case <-done:
-				close(messages)
-				return
-			}
-
-		case <-done:
-			close(messages)
-			return
+			hub.broadcast <- snapshot
 		}
 	}
 }
@@ -348,6 +335,7 @@ func main() {
 
 	hub := newHub()
 	go runHub(hub)
+	go runGameLoop(hub)
 
 	server := http.NewServeMux()
 	server.Handle("/", http.FileServer(http.Dir("static")))

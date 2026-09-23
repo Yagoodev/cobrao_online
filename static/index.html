@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#e9ede2">
-  <title>Cobrão — A clareira</title>
+  <meta name="theme-color" content="#343d2a">
+  <title>Cobrão — O visor</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/css/style.css">
 </head>
@@ -14,15 +14,17 @@
     <span class="connection" id="connection" role="status" data-state="connecting"><i aria-hidden="true"></i><span>Conectando</span></span>
   </header>
   <main class="game" aria-label="Arena do jogo">
-    <section class="stage" aria-label="Clareira flutuante em visão isométrica">
-      <canvas id="board" tabindex="0" aria-label="Arena 3D. Use as setas do teclado para mover a cobra."></canvas>
-      <div class="overlay" id="overlay" role="status">Preparando a clareira…</div>
+    <section class="stage" aria-label="Visor monocromático com a arena">
+      <div class="screen">
+        <canvas id="board" tabindex="0" aria-label="Arena monocromática. Use as setas do teclado para mover a cobra."></canvas>
+      </div>
+      <div class="overlay" id="overlay" role="status">Ligando o visor…</div>
     </section>
   </main>
   <footer class="footer">
-    <div class="location"><span class="eyebrow">UM PEQUENO MUNDO LÁ EM CIMA</span><h1>A clareira<span>.</span></h1><p>Entre pedras antigas e um pouco de verde.</p></div>
+    <div class="location"><span class="eyebrow">UM VISOR MONOCROMÁTICO DE 1997</span><h1>O visor<span>.</span></h1><p>Vinte e um por vinte e um, em dois tons de verde.</p></div>
     <div class="controls" aria-label="Controles"><span class="keys" aria-hidden="true"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><span>para explorar</span></div>
-    <span class="edition">ARENA 01 <span aria-hidden="true">/</span> FLORESTA</span>
+    <span class="edition">ARENA 01 <span aria-hidden="true">/</span> LCD</span>
   </footer>
   <noscript><p class="overlay">Ative o JavaScript para visualizar a arena.</p></noscript>
   <script type="module" src="/js/server.js"></script>

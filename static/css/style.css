@@ -1,9 +1,16 @@
+/* The whole page is the handset shell: matte olive plastic, silkscreened
+   labels and moulded keys. The LCD is the only lit surface. */
 :root {
-  color-scheme: light;
-  font-family: "Segoe UI", system-ui, sans-serif;
-  color: #304637;
-  background: #e9ede2;
+  color-scheme: dark;
+  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
   font-synthesis: none;
+
+  --shell-low: #1c2216;
+  --silk: #a7b58e;
+  --silk-dim: #87956c;
+  --lcd: #a6b48b;
+  --ink: #252e1c;
+  --led: #b6cc63;
 }
 
 * {
@@ -13,7 +20,12 @@
 body {
   margin: 0;
   min-height: 100svh;
-  background: radial-gradient(ellipse at 50% 42%, #f6f5e9 0%, #edf0e5 42%, #dce5d7 100%);
+  color: var(--silk);
+  /* Moulded plastic: a wide soft highlight behind the screen, darker at the edges. */
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 40%, #4c573d 0%, #3b452f 45%, transparent 75%),
+    linear-gradient(#414b35, #343d2a 55%, #29301f);
+  background-attachment: fixed;
 }
 
 .header,
@@ -31,55 +43,66 @@ body {
   top: 30px;
 }
 
+/* Brand reads as the name printed above the screen, not as editorial type. */
 .brand {
   display: flex;
   align-items: center;
   gap: 11px;
-  color: inherit;
+  color: var(--silk);
   text-decoration: none;
-  font-size: 25px;
-  font-weight: 750;
-  letter-spacing: -1.3px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 4px;
 }
 
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 33px;
-  height: 33px;
-  border: 1.5px solid #668169;
-  border-radius: 12px;
-  font-family: Georgia, serif;
-  font-size: 28px;
-  padding-bottom: 6px;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--silk-dim);
+  border-radius: 8px;
+  font-size: 13px;
+  letter-spacing: 0;
+  padding-bottom: 1px;
+  color: var(--silk);
+  box-shadow: 0 1px 0 #4a553b, 0 1px 0 #212719 inset;
 }
 
 .brand-detail {
-  margin-left: 4px;
-  font-size: 9px;
-  letter-spacing: 2px;
-  font-weight: 600;
-  color: #81907b;
+  margin-left: 2px;
+  font-size: 8px;
+  letter-spacing: 3px;
+  color: var(--silk-dim);
 }
 
 .connection {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: #788472;
+  gap: 9px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--silk-dim);
 }
 
+/* A real indicator LED sunk into the shell. */
 .connection i {
   width: 6px;
   height: 6px;
-  background: #a89e72;
   border-radius: 50%;
+  background: #4d573c;
+  box-shadow: 0 0 0 1px #232a1c inset;
+}
+
+.connection[data-state="connecting"] i {
+  background: #9a8a4a;
 }
 
 .connection[data-state="online"] i {
-  background: #638352;
-  box-shadow: 0 0 0 4px #64845410;
+  background: var(--led);
+  box-shadow: 0 0 6px 1px #b6cc6355;
 }
 
 .game {
@@ -88,10 +111,33 @@ body {
   place-items: center;
 }
 
+/* The screen well: the bezel is moulded straight out of the same plastic. */
 .stage {
   position: relative;
-  width: min(1100px, 88vw);
-  height: min(780px, 76svh);
+  width: min(740px, 86vw, 70svh);
+  aspect-ratio: 1 / 1.07;
+  padding: 30px;
+  border-radius: 22px;
+  background: linear-gradient(#333c28, #29301f 55%, #232a1b);
+  box-shadow:
+    0 1px 0 #5d6950,
+    0 -1px 0 #1a2014,
+    0 30px 50px -34px #141a0e,
+    0 4px 14px #161c1055;
+}
+
+/* The LCD sits a couple of millimetres inside the shell. */
+.screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--lcd);
+  box-shadow:
+    0 0 0 2px #1b2116,
+    0 4px 9px -2px #141a10 inset,
+    0 -2px 6px -2px #141a1066 inset;
 }
 
 #board {
@@ -102,24 +148,27 @@ body {
 }
 
 #board:focus-visible {
-  outline: 1px solid #7d957c;
-  outline-offset: 5px;
-  border-radius: 20px;
+  outline: 1px solid #58664a;
+  outline-offset: -4px;
 }
 
+/* Messages are printed on the LCD, so they use its ink and its hard edges. */
 .overlay {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(360px, 90%);
-  padding: 18px 22px;
+  width: min(320px, 78%);
+  padding: 14px 18px;
   text-align: center;
-  font-size: 13px;
-  line-height: 1.6;
-  background: #f6f6edee;
-  border: 1px solid #d2dacb;
-  border-radius: 12px;
+  font-size: 10px;
+  line-height: 1.9;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--lcd);
+  border: 2px solid var(--ink);
+  border-radius: 2px;
 }
 
 .overlay[hidden] {
@@ -134,27 +183,29 @@ body {
 
 .eyebrow {
   font-size: 8px;
-  font-weight: 650;
   letter-spacing: 2px;
-  color: #84927d;
+  color: var(--silk-dim);
 }
 
 h1 {
-  font-family: Georgia, "Times New Roman", serif;
-  font-weight: 400;
-  font-size: 32px;
-  letter-spacing: -1px;
-  margin: 8px 0 5px;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 19px;
+  text-transform: uppercase;
+  letter-spacing: 5px;
+  margin: 10px 0 6px;
+  color: var(--silk);
 }
 
 h1 span {
-  color: #86a060;
+  color: var(--led);
 }
 
 .location p {
   margin: 0;
-  font-size: 11px;
-  color: #81907c;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--silk-dim);
 }
 
 .controls {
@@ -164,8 +215,10 @@ h1 span {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 10px;
-  color: #8b9682;
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--silk-dim);
 }
 
 .keys {
@@ -173,30 +226,31 @@ h1 span {
   gap: 4px;
 }
 
+/* Moulded rubber keys: light catches the top edge, shadow pools underneath. */
 kbd {
   display: grid;
   place-items: center;
   width: 24px;
   height: 25px;
   font-family: inherit;
-  font-size: 13px;
-  color: #697e62;
-  background: #ffffff50;
-  border: 1px solid #c6d0bf;
-  border-bottom-width: 2px;
+  font-size: 12px;
+  color: var(--silk);
+  background: linear-gradient(#4b5640, #39432e);
+  border: 1px solid var(--shell-low);
   border-radius: 5px;
+  box-shadow: 0 1px 0 #616d53 inset, 0 2px 3px -1px #181e11;
 }
 
 .edition {
-  color: #8b9682;
+  color: var(--silk-dim);
   font-size: 8px;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
   padding-bottom: 4px;
 }
 
 .edition span {
   padding: 0 10px;
-  color: #b1bba8;
+  color: #56624190;
 }
 
 @media (max-width: 640px) {
@@ -207,7 +261,8 @@ kbd {
   }
 
   .brand {
-    font-size: 22px;
+    font-size: 12px;
+    letter-spacing: 3px;
   }
 
   .brand-detail {
@@ -215,8 +270,9 @@ kbd {
   }
 
   .stage {
-    width: 100%;
-    height: 65svh;
+    width: min(100%, 56svh);
+    padding: 18px;
+    border-radius: 16px;
   }
 
   .footer {
@@ -226,7 +282,8 @@ kbd {
   }
 
   h1 {
-    font-size: 27px;
+    font-size: 16px;
+    letter-spacing: 3px;
   }
 
   .eyebrow {
@@ -236,8 +293,8 @@ kbd {
 
   .location p {
     max-width: 180px;
-    font-size: 10px;
-    line-height: 1.6;
+    font-size: 8px;
+    line-height: 1.8;
   }
 
   .controls {
@@ -246,7 +303,7 @@ kbd {
 
   .edition {
     max-width: 85px;
-    line-height: 1.8;
+    line-height: 1.9;
     text-align: right;
     font-size: 7px;
   }
@@ -268,6 +325,6 @@ kbd {
   }
 
   h1 {
-    font-size: 23px;
+    font-size: 16px;
   }
 }
